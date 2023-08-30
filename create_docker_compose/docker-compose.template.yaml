@@ -1,0 +1,103 @@
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: ${OCRD_PS_MTU}
+
+services:
+  reverse-proxy:
+    image: traefik:2.10
+    container_name: ocrd-reverse-proxy
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+    ports:
+      - "80:80"
+      - "8081:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  ocrd-processing-server:
+    image: ocrd/all:maximum
+    ports:
+      - ${OCRD_PS_PORT}:8000
+    environment:
+      MONGODB_USER: ${MONGODB_USER}
+      MONGODB_PASS: ${MONGODB_PASS}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+    command: |
+      /bin/bash -c "echo -e \"
+        process_queue:
+          address: ocrd-rabbitmq
+          port: 5672
+          skip_deployment: true
+          credentials:
+            username: ${RABBITMQ_USER}
+            password: ${RABBITMQ_PASS}
+        database:
+          address: ocrd-mongodb
+          port: 27017
+          skip_deployment: true
+          credentials:
+            username: ${MONGODB_USER}
+            password: ${MONGODB_PASS}
+        hosts: []\" > /ocrd-processing-server-config.yaml && \
+        ocrd network processing-server -a 0.0.0.0:8000 /ocrd-processing-server-config.yaml"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.processing-server.rule=PathPrefix(`/`)"
+
+  ocrd-mongodb:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASS}
+    ports:
+      - "27018:27017"
+
+  ocrd-rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  webapi:
+    container_name: ocrd-webapi
+    build: https://github.com/OCR-D/ocrd-webapi-implementation.git#v0.12.0
+    ports:
+      - 8001:8000
+    volumes:
+      - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webapi-workspace.rule=PathPrefix(`/workspace`)"
+      - "traefik.http.routers.webapi-workflow.rule=PathPrefix(`/workflow`)"
+    environment:
+      - OCRD_WEBAPI_SERVER_PATH=http://141.5.109.66
+      - OCRD_WEBAPI_BASE_DIR=/tmp/ocrd-webapi-data
+      - OCRD_WEBAPI_DB_URL=mongodb://admin:admin@172.17.0.1:27018
+      - OCRD_WEBAPI_DB_NAME=ocrd
+      - OCRD_WEBAPI_USERNAME={{ webapiuser }}
+      - OCRD_WEBAPI_PASSWORD={{ webapipass }}
+    user: "1000:1000"
+
+  # Optional fastapi-docs
+  docs:
+    build: https://github.com/joschrew/fastapi-docs-combine.git#main
+    ports:
+      - "8091:80"
+    environment:
+      - "COMBINE_URLS=http://webapi:8000/openapi.json http://processing-server:8000/openapi.json"
+      - "COMBINE_TITLE=OCR-D processing server & webapi"
+      - "COMBINE_IGNORE=/ /stop /discovery"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.my-docs.rule=PathPrefix(`/docs`)"
+      - "traefik.http.middlewares.my-replacepath.replacepath.path=/combined_docs"
+      - "traefik.http.routers.my-docs.middlewares=my-replacepath"
+      - "traefik.http.routers.my-docs2.rule=PathPrefix(`/customdocs`)"
