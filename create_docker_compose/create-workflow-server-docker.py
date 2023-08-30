@@ -5,13 +5,12 @@ processing server
 
 import requests
 from pathlib import Path
-import yaml
 import re
 
 DEST = "../docker-compose.yaml"
 DEST_ENV = "../env"
 REPLACE_IMAGE_NAME = ""
-#REPLACE_IMAGE_NAME = "ocrd_all_workflow"
+# REPLACE_IMAGE_NAME = "ocrd_all_workflow"
 
 
 DC_BASE_TEMPLATE = "docker-compose.template.yaml"
