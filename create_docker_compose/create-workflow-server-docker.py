@@ -8,9 +8,9 @@ from pathlib import Path
 import re
 
 DEST = "../docker-compose.yaml"
-DEST_ENV = "../env"
-REPLACE_IMAGE_NAME = ""
-# REPLACE_IMAGE_NAME = "ocrd_all_workflow"
+DEST_ENV = "../.env"
+# REPLACE_IMAGE_NAME = ""
+REPLACE_IMAGE_NAME = "ocrd_all_workflow"
 
 
 DC_BASE_TEMPLATE = "docker-compose.template.yaml"
@@ -30,6 +30,7 @@ YES_LIST = [
     "ocrd-tesserocr-segment-region",
     "ocrd-segment-repair",
     "ocrd-cis-ocropy-clip",
+    "ocrd-cis-ocropy-segment",
     "ocrd-cis-ocropy-dewarp",
     "ocrd-tesserocr-recognize",
 ]
@@ -66,14 +67,17 @@ def main():
             "OCRD_PS_MTU=1300",
             "MONGODB_USER=admin",
             "MONGODB_PASS=admin",
-            "MONGODB_URL=mongodb://${MONGODB_USER}:${MONGODB_PASS}@ocrd-mongodb:27017",
+            "#MONGODB_URL=mongodb://${MONGODB_USER}:${MONGODB_PASS}@ocrd-mongodb:27017",
+            "MONGODB_URL=mongodb://admin:admin@ocrd-mongodb:27017",
             "RABBITMQ_USER=admin",
             "RABBITMQ_PASS=admin",
-            "RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@ocrd-rabbitmq:5672",
+            "#RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@ocrd-rabbitmq:5672",
+            "RABBITMQ_URL=amqp://admin:admin@ocrd-rabbitmq:5672",
 
             "OCRD_WEBAPI_SERVER_PATH=http://141.5.102.11",
             "OCRD_WEBAPI_BASE_DIR=/tmp/ocrd-webapi-data",
-            "OCRD_WEBAPI_DB_URL=${MONGODB_URL}",
+            "#OCRD_WEBAPI_DB_URL=${MONGODB_URL}",
+            "OCRD_WEBAPI_DB_URL=mongodb://admin:admin@ocrd-mongodb:27017",
             "OCRD_WEBAPI_DB_NAME=ocrd",
             "OCRD_WEBAPI_USERNAME=test",
             "OCRD_WEBAPI_PASSWORD=testtest",
