@@ -68,7 +68,7 @@ services:
       - "5672:5672"
       - "15672:15672"
 
-  webapi:
+  ocrd-webapi:
     container_name: ocrd-webapi
     build: https://github.com/OCR-D/ocrd-webapi-implementation.git#v0.12.0
     ports:
@@ -80,13 +80,13 @@ services:
       - "traefik.http.routers.webapi-workspace.rule=PathPrefix(`/workspace`)"
       - "traefik.http.routers.webapi-workflow.rule=PathPrefix(`/workflow`)"
     environment:
-      - OCRD_WEBAPI_SERVER_PATH=http://141.5.109.66
-      - OCRD_WEBAPI_BASE_DIR=/tmp/ocrd-webapi-data
-      - OCRD_WEBAPI_DB_URL=mongodb://admin:admin@172.17.0.1:27018
-      - OCRD_WEBAPI_DB_NAME=ocrd
-      - OCRD_WEBAPI_USERNAME={{ webapiuser }}
-      - OCRD_WEBAPI_PASSWORD={{ webapipass }}
-    user: "1000:1000"
+      OCRD_WEBAPI_SERVER_PATH: ${OCRD_WEBAPI_SERVER_PATH}
+      OCRD_WEBAPI_BASE_DIR: ${OCRD_WEBAPI_BASE_DIR}
+      OCRD_WEBAPI_DB_URL: ${OCRD_WEBAPI_DB_URL}
+      OCRD_WEBAPI_DB_NAME: ${OCRD_WEBAPI_DB_NAME}
+      OCRD_WEBAPI_USERNAME: ${OCRD_WEBAPI_USERNAME}
+      OCRD_WEBAPI_PASSWORD: ${OCRD_WEBAPI_PASSWORD}
+    user: "0:0"
 
   # Optional fastapi-docs
   docs:
