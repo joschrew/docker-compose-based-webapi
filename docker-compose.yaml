@@ -1,3 +1,5 @@
+version: '3.7'
+
 networks:
   default:
     driver: bridge
@@ -19,14 +21,14 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
 
   ocrd-processing-server:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     ports:
       - ${OCRD_PS_PORT}:8000
     environment:
-      MONGODB_USER: ${MONGODB_USER:-admin}
-      MONGODB_PASS: ${MONGODB_PASS:-admin}
-      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
-      RABBITMQ_PASS: ${RABBITMQ_PASS:-admin}
+      MONGODB_USER: ${MONGODB_USER}
+      MONGODB_PASS: ${MONGODB_PASS}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
     command: |
       /bin/bash -c "echo -e \"
         process_queue:
@@ -52,21 +54,21 @@ services:
   ocrd-mongodb:
     image: mongo:latest
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASS:-admin}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASS}
     ports:
       - "27018:27017"
 
   ocrd-rabbitmq:
     image: rabbitmq:3-management
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     ports:
       - "5672:5672"
       - "15672:15672"
 
-  webapi:
+  ocrd-webapi:
     container_name: ocrd-webapi
     build: https://github.com/OCR-D/ocrd-webapi-implementation.git#v0.12.0
     ports:
@@ -78,13 +80,13 @@ services:
       - "traefik.http.routers.webapi-workspace.rule=PathPrefix(`/workspace`)"
       - "traefik.http.routers.webapi-workflow.rule=PathPrefix(`/workflow`)"
     environment:
-      - OCRD_WEBAPI_SERVER_PATH=http://141.5.109.66
-      - OCRD_WEBAPI_BASE_DIR=/tmp/ocrd-webapi-data
-      - OCRD_WEBAPI_DB_URL=mongodb://admin:admin@172.17.0.1:27018
-      - OCRD_WEBAPI_DB_NAME=ocrd
-      - OCRD_WEBAPI_USERNAME={{ webapiuser }}
-      - OCRD_WEBAPI_PASSWORD={{ webapipass }}
-    user: "1000:1000"
+      OCRD_WEBAPI_SERVER_PATH: ${OCRD_WEBAPI_SERVER_PATH}
+      OCRD_WEBAPI_BASE_DIR: ${OCRD_WEBAPI_BASE_DIR}
+      OCRD_WEBAPI_DB_URL: ${OCRD_WEBAPI_DB_URL}
+      OCRD_WEBAPI_DB_NAME: ${OCRD_WEBAPI_DB_NAME}
+      OCRD_WEBAPI_USERNAME: ${OCRD_WEBAPI_USERNAME}
+      OCRD_WEBAPI_PASSWORD: ${OCRD_WEBAPI_PASSWORD}
+    user: "0:0"
 
   # Optional fastapi-docs
   docs:
@@ -103,7 +105,7 @@ services:
       - "traefik.http.routers.my-docs2.rule=PathPrefix(`/customdocs`)"
 
   ocrd-anybaseocr-crop:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-anybaseocr-crop
     depends_on:
       #- ocrd-processing-server
@@ -113,7 +115,7 @@ services:
       - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
 
   ocrd-cis-ocropy-clip:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-cis-ocropy-clip
     depends_on:
       #- ocrd-processing-server
@@ -123,7 +125,7 @@ services:
       - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
 
   ocrd-cis-ocropy-denoise:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-cis-ocropy-denoise
     depends_on:
       #- ocrd-processing-server
@@ -133,7 +135,7 @@ services:
       - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
 
   ocrd-cis-ocropy-dewarp:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-cis-ocropy-dewarp
     depends_on:
       #- ocrd-processing-server
@@ -142,8 +144,18 @@ services:
     volumes:
       - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
 
+  ocrd-cis-ocropy-segment:
+    image: ocrd_all_workflow
+    command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-cis-ocropy-segment
+    depends_on:
+      #- ocrd-processing-server
+      - ocrd-mongodb
+      - ocrd-rabbitmq
+    volumes:
+      - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
+
   ocrd-olena-binarize:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-olena-binarize
     depends_on:
       #- ocrd-processing-server
@@ -153,7 +165,7 @@ services:
       - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
 
   ocrd-segment-repair:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-segment-repair
     depends_on:
       #- ocrd-processing-server
@@ -163,7 +175,7 @@ services:
       - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
 
   ocrd-tesserocr-recognize:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-tesserocr-recognize
     depends_on:
       #- ocrd-processing-server
@@ -173,7 +185,7 @@ services:
       - "/tmp/ocrd-webapi-data:/tmp/ocrd-webapi-data"
 
   ocrd-tesserocr-segment-region:
-    image: ocrd/all:maximum
+    image: ocrd_all_workflow
     command: ocrd network processing-worker --database $MONGODB_URL --queue $RABBITMQ_URL --create-queue --queue-connect-attempts 5 ocrd-tesserocr-segment-region
     depends_on:
       #- ocrd-processing-server
